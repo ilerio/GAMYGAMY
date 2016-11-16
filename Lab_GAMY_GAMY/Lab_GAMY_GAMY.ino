@@ -1,7 +1,8 @@
 // declaration section
 int encoderPin1 = 2;
 int encoderPin2 = 14;
-int buttonPin = 5;
+int encoderButton = 5;
+int buttonPin = 15;
 int ledPin_1 = 4;
 int ledPin_2 = 13;
 int ledPin_3 = 12;
@@ -18,16 +19,19 @@ int MSB, LSB, encoded, sum;
 int i = -1;
 int cur = 0;
 
+bool blinking = false;
+
 void setup() {
   Serial.begin (9600);
   // set input pinmode
   pinMode(encoderPin1, INPUT_PULLUP);
   pinMode(encoderPin2, INPUT_PULLUP);
-  pinMode(buttonPin, INPUT_PULLUP);
+  pinMode(buttonPin, INPUT);
+  pinMode(encoderButton, INPUT_PULLUP);
   //turn pull-up resistors on
   digitalWrite(encoderPin1, HIGH);
   digitalWrite(encoderPin2, HIGH);
-  digitalWrite(buttonPin, HIGH);
+  digitalWrite(encoderButton, HIGH);
   // set output pinmode
   pinMode(ledPin_1, OUTPUT);
   pinMode(ledPin_2, OUTPUT);
@@ -48,14 +52,46 @@ void initialize() {
 }
 
 void loop() {
-  //Do stuff here
-  if (lastencoderValue != encoderValue) {
+  if (!digitalRead(encoderButton) && !blinking) {
+    // Blink the LED
+    blinking = true;
+    int k;
+    for (k=0;k<3;k++) {
+      digitalWrite(leds[cur], HIGH);
+      delay(200);
+      digitalWrite(leds[cur], LOW);
+      delay(200);
+    }
+    digitalWrite(leds[cur], HIGH);
+    blinking = false;
+  }
 
+  //[ileri]: This is mostly for testing purposes
+  if (digitalRead(buttonPin) && !blinking) {
+    // Blink all LEDs
+    int k;
+    for (k=0;k<3;k++) {
+      digitalWrite(leds[0], HIGH);
+      digitalWrite(leds[1], HIGH);
+      digitalWrite(leds[2], HIGH);
+      digitalWrite(leds[3], HIGH);
+      delay(200);
+      digitalWrite(leds[0], LOW);
+      digitalWrite(leds[1], LOW);
+      digitalWrite(leds[2], LOW);
+      digitalWrite(leds[3], LOW);
+      delay(200);
+    }
+    digitalWrite(leds[cur], HIGH);
+    blinking = false;
+  }
+
+  if (lastencoderValue != encoderValue && !blinking) {
     Serial.println(String("ev: ") + encoderValue);
     Serial.println(String("cur: ") + cur);
     Serial.println();
     
-    if (lastencoderValue < encoderValue) {
+    if (lastencoderValue < encoderValue && encoderValue % 2 == 0) {
       // change lights
       digitalWrite(leds[cur], LOW);
       cur++;
@@ -63,7 +99,7 @@ void loop() {
        cur = 0;
       }
       digitalWrite(leds[cur], HIGH);
-    } else if (lastencoderValue > encoderValue) {
+    } else if (lastencoderValue > encoderValue && encoderValue % 2 == 0) {
       // change lights
       digitalWrite(leds[cur], LOW);
       cur--;
@@ -72,7 +108,6 @@ void loop() {
       }
       digitalWrite(leds[cur], HIGH);
     }
-    
     lastencoderValue = encoderValue;
   }
   

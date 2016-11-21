@@ -1,3 +1,53 @@
+#include <ESP8266WiFi.h>
+#include <WiFiUdp.h>
+
+// Network related stuff goes in here
+namespace Network {
+  //////////////////////
+  // WiFi Definitions
+  //////////////////////
+  const char WiFiSSID[] = "chop";
+  const char WiFiPSK[] = "butch3rs";
+
+  //////////////////////
+  // Host and Port Definitions
+  //////////////////////
+  IPAddress hostIP(192, 168, 10, 1);
+  const uint16_t port = 13100;
+
+  // Use WiFiUDP class to create UDP connections
+  WiFiUDP client;
+
+  void connect() {
+    Serial.println();
+    Serial.println("Connecting to: " + String(WiFiSSID));
+    // Set WiFi mode to station (as opposed to AP or AP_STA)
+    WiFi.mode(WIFI_STA);
+  
+    // WiFI.begin([ssid], [passkey]) initiates a WiFI connection
+    // to the stated [ssid], using the [passkey] as a WPA, WPA2,
+    // or WEP passphrase.
+    WiFi.begin(WiFiSSID, WiFiPSK);
+  
+    // Use the WiFi.status() function to check if the ESP8266
+    // is connected to a WiFi network.
+    while (WiFi.status() != WL_CONNECTED)
+      delay(100);
+  
+    // success
+    Serial.println("WiFi connected");
+    Serial.println("IP address: ");
+    Serial.println(WiFi.localIP());
+  
+    delay(500);
+  
+    Serial.print("Listening on port: ");
+    Serial.println(port);
+  
+    client.begin(port);
+  }
+}
+
 // declaration section
 int encoderPin1 = 2;
 int encoderPin2 = 14;
@@ -49,6 +99,8 @@ void initialize() {
   i = -1;
   cur = 0;
   Serial.println(""); // to get off first line
+
+  Network::connect();
 }
 
 void loop() {
@@ -56,7 +108,7 @@ void loop() {
     // Blink the LED
     blinking = true;
     int k;
-    for (k=0;k<3;k++) {
+    for (k = 0; k < 3; k++) {
       digitalWrite(leds[cur], HIGH);
       delay(200);
       digitalWrite(leds[cur], LOW);
@@ -70,7 +122,7 @@ void loop() {
   if (digitalRead(buttonPin) && !blinking) {
     // Blink all LEDs
     int k;
-    for (k=0;k<3;k++) {
+    for (k = 0; k < 3; k++) {
       digitalWrite(leds[0], HIGH);
       digitalWrite(leds[1], HIGH);
       digitalWrite(leds[2], HIGH);
@@ -90,13 +142,13 @@ void loop() {
     Serial.println(String("ev: ") + encoderValue);
     Serial.println(String("cur: ") + cur);
     Serial.println();
-    
+
     if (lastencoderValue < encoderValue && encoderValue % 2 == 0) {
       // change lights
       digitalWrite(leds[cur], LOW);
       cur++;
       if (cur > 3) {
-       cur = 0;
+        cur = 0;
       }
       digitalWrite(leds[cur], HIGH);
     } else if (lastencoderValue > encoderValue && encoderValue % 2 == 0) {
@@ -104,13 +156,13 @@ void loop() {
       digitalWrite(leds[cur], LOW);
       cur--;
       if (cur < 0) {
-       cur = 3;
+        cur = 3;
       }
       digitalWrite(leds[cur], HIGH);
     }
     lastencoderValue = encoderValue;
   }
-  
+
   delay(10); // we like a little delay
 }
 

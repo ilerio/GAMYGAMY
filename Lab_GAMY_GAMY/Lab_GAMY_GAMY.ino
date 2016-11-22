@@ -67,6 +67,7 @@ namespace Network {
       Serial.println(*data);
       return data;
     }
+    delete data;
     return NULL;
   }
 
@@ -76,8 +77,11 @@ namespace Network {
 
   boolean didReceiveInitialHandshake() {
     String* data = readData();
-    if(data != NULL && data->startsWith("HLO"))
+    if(data != NULL && data->startsWith("HLO")) {
+      delete data;
       return true;
+    }
+    delete data;
     return false;
   }
 }

@@ -57,23 +57,28 @@ namespace Network {
   }
 
   // For internal use
-  void readData() {
+  String readData() {
     // Read all the lines of the reply from server and print them to Serial
-    int size = client.parsePacket();
-    if(size != 0) {
-      while(client.peek() != -1) {
-        byte data = client.read();
-        Serial.print(data);
-      }
+    String data = "";
+    if(client.parsePacket() != 0) {
+      while(client.peek() != -1)
+        data += client.read();
+
+      Serial.println(data);
+      return data;
     }
+    return null;
   }
 
   void sendInitialHandshake() {
-    sendData("H");
+    sendData("HLO");
   }
 
   boolean didReceiveInitialHandshake() {
-    // TODO
+    String data = readData();
+    if(data != null && data.startsWith("HLO"))
+      return true;
+    return false;
   }
 }
 
@@ -131,6 +136,12 @@ void initialize() {
 
   Network::connect();
   Network::sendInitialHandshake();
+  while(true) {
+    if(Network::didReceiveInitialHandshake())
+      break;
+
+    delay(10);
+  }
 }
 
 void loop() {

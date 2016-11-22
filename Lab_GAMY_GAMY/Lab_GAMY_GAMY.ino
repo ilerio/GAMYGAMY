@@ -155,8 +155,10 @@ void initialize() {
   Network::connect();
   Network::sendInitialHandshake();
   while(true) {
-    if(Network::didReceiveHandshake())
+    if(Network::didReceiveHandshake()) {
+      Network::sendHandshakeResponse();
       break;
+    }
 
     delay(10);
   }

@@ -46,6 +46,35 @@ namespace Network {
   
     client.begin(port);
   }
+
+  // For internal use
+  void sendData(String data) {
+    client.beginPacket(hostIP,port);
+    client.print("{\"game\":\"SimonSays\",\"payload\":\"");
+    client.print(data.c_str());
+    client.print("\"}");
+    client.endPacket();
+  }
+
+  // For internal use
+  void readData() {
+    // Read all the lines of the reply from server and print them to Serial
+    int size = client.parsePacket();
+    if(size != 0) {
+      while(client.peek() != -1) {
+        byte data = client.read();
+        Serial.print(data);
+      }
+    }
+  }
+
+  void sendInitialHandshake() {
+    sendData("H");
+  }
+
+  boolean didReceiveInitialHandshake() {
+    // TODO
+  }
 }
 
 // declaration section
@@ -101,6 +130,7 @@ void initialize() {
   Serial.println(""); // to get off first line
 
   Network::connect();
+  Network::sendInitialHandshake();
 }
 
 void loop() {

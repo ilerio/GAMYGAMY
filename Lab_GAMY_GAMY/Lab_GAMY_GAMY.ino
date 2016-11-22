@@ -59,15 +59,14 @@ namespace Network {
   // For internal use
   String* readData() {
     // Read all the lines of the reply from server and print them to Serial
-    String* data = new String("");
     if(client.parsePacket() != 0) {
+      String* data = new String("");
       while(client.peek() != -1)
-        *data += client.read();
+        *data += (char)client.read();
 
       Serial.println(*data);
       return data;
     }
-    delete data;
     return NULL;
   }
 

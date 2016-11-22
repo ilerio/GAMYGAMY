@@ -185,9 +185,9 @@ void loop() {
   }
 
   if (lastencoderValue != encoderValue && !blinking) {
-    Serial.println(String("ev: ") + encoderValue);
-    Serial.println(String("cur: ") + cur);
-    Serial.println();
+    //Serial.println(String("ev: ") + encoderValue);
+    //Serial.println(String("cur: ") + cur);
+    //Serial.println();
 
     if (lastencoderValue < encoderValue && encoderValue % 2 == 0) {
       // change lights

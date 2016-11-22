@@ -20,33 +20,33 @@ namespace Network {
 
   // Which player are we?
   byte player;
-  
+
   void connect() {
     Serial.println();
     Serial.println("Connecting to: " + String(WiFiSSID));
     // Set WiFi mode to station (as opposed to AP or AP_STA)
     WiFi.mode(WIFI_STA);
-  
+
     // WiFI.begin([ssid], [passkey]) initiates a WiFI connection
     // to the stated [ssid], using the [passkey] as a WPA, WPA2,
     // or WEP passphrase.
     WiFi.begin(WiFiSSID, WiFiPSK);
-  
+
     // Use the WiFi.status() function to check if the ESP8266
     // is connected to a WiFi network.
     while (WiFi.status() != WL_CONNECTED)
       delay(100);
-  
+
     // success
     Serial.println("WiFi connected");
     Serial.println("IP address: ");
     Serial.println(WiFi.localIP());
-  
+
     delay(500);
-  
+
     Serial.print("Listening on port: ");
     Serial.println(port);
-  
+
     client.begin(port);
   }
 
@@ -108,8 +108,7 @@ int ledPin_2 = 13;
 int ledPin_3 = 12;
 int ledPin_4 = 16;
 int leds[] = {ledPin_1, ledPin_2, ledPin_3, ledPin_4};
-byte seletLed[500];
-byte duration[500];
+
 volatile long lastEncoded = 0;
 volatile long encoderValue = 0;
 long lastencoderValue = 0;
@@ -119,8 +118,12 @@ int MSB, LSB, encoded, sum;
 
 // My Variables
 int i = -1;
-int cur = 0;
-
+byte cur = 0;
+byte selectLed[500];
+byte duration[500];
+int timeKeeper;
+int startTime;
+bool initial = true; // for the initial start of the game (this is to initialize startTime)
 bool blinking = false;
 
 void setup() {
@@ -150,6 +153,7 @@ void initialize() {
   digitalWrite(ledPin_1, HIGH);
   i = -1;
   cur = 0;
+  timeKeeper = millis();
   Serial.println(""); // to get off first line
 
   Network::connect();
@@ -165,65 +169,85 @@ void initialize() {
 }
 
 void loop() {
-  if (!digitalRead(encoderButton) && !blinking) {
-    // Blink the LED
-    blinking = true;
-    int k;
-    for (k = 0; k < 3; k++) {
-      digitalWrite(leds[cur], HIGH);
-      delay(200);
-      digitalWrite(leds[cur], LOW);
-      delay(200);
+  if (Network::player == 1 && digitalRead(buttonPin)) {
+    if (initial == true) {
+      startTime = millis();
+      initial = false;
     }
-    digitalWrite(leds[cur], HIGH);
-    blinking = false;
-  }
-
-  //[ileri]: This is mostly for testing purposes
-  if (digitalRead(buttonPin) && !blinking) {
-    // Blink all LEDs
-    int k;
-    for (k = 0; k < 3; k++) {
-      digitalWrite(leds[0], HIGH);
-      digitalWrite(leds[1], HIGH);
-      digitalWrite(leds[2], HIGH);
-      digitalWrite(leds[3], HIGH);
-      delay(200);
-      digitalWrite(leds[0], LOW);
-      digitalWrite(leds[1], LOW);
-      digitalWrite(leds[2], LOW);
-      digitalWrite(leds[3], LOW);
-      delay(200);
-    }
-    digitalWrite(leds[cur], HIGH);
-    blinking = false;
-  }
-
-  if (lastencoderValue != encoderValue && !blinking) {
-    //Serial.println(String("ev: ") + encoderValue);
-    //Serial.println(String("cur: ") + cur);
-    //Serial.println();
-
-    if (lastencoderValue < encoderValue && encoderValue % 2 == 0) {
-      // change lights
-      digitalWrite(leds[cur], LOW);
-      cur++;
-      if (cur > 3) {
-        cur = 0;
+    if (!digitalRead(encoderButton) && !blinking && (timeKeeper - startTime < 5000)) {
+      // Blink the LED
+      blinking = true;
+      i++;
+      selectLed[i] = cur;
+      int k;
+      for (k = 0; k < 1; k++) {
+        digitalWrite(leds[cur], HIGH);
+        delay(200);
+        digitalWrite(leds[cur], LOW);
+        delay(200);
       }
       digitalWrite(leds[cur], HIGH);
-    } else if (lastencoderValue > encoderValue && encoderValue % 2 == 0) {
-      // change lights
-      digitalWrite(leds[cur], LOW);
-      cur--;
-      if (cur < 0) {
-        cur = 3;
+      blinking = false;
+    }
+
+    /*/[ileri]: This is mostly for testing purposes | could also be used to signal a waiting state
+    if (digitalRead(buttonPin) && !blinking) { // [ileri]: disabled for now
+      // Blink all LEDs
+      int k;
+      for (k = 0; k < 3; k++) {
+        digitalWrite(leds[0], HIGH);
+        digitalWrite(leds[1], HIGH);
+        digitalWrite(leds[2], HIGH);
+        digitalWrite(leds[3], HIGH);
+        delay(200);
+        digitalWrite(leds[0], LOW);
+        digitalWrite(leds[1], LOW);
+        digitalWrite(leds[2], LOW);
+        digitalWrite(leds[3], LOW);
+        delay(200);
       }
       digitalWrite(leds[cur], HIGH);
-    }
-    lastencoderValue = encoderValue;
-  }
+      blinking = false;
+    }*/
 
+    if (lastencoderValue != encoderValue && !blinking) {
+      //Serial.println(String("ev: ") + encoderValue);
+      //Serial.println(String("cur: ") + cur);
+      //Serial.println();
+
+      if (lastencoderValue < encoderValue && encoderValue % 2 == 0) {
+        // change lights
+        digitalWrite(leds[cur], LOW);
+        cur++;
+        if (cur > 3) {
+          cur = 0;
+        }
+        digitalWrite(leds[cur], HIGH);
+      } else if (lastencoderValue > encoderValue && encoderValue % 2 == 0) {
+        // change lights
+        digitalWrite(leds[cur], LOW);
+        cur--;
+        if (cur < 0) {
+          cur = 3;
+        }
+        digitalWrite(leds[cur], HIGH);
+      }
+      lastencoderValue = encoderValue;
+    }
+  } else {
+    digitalWrite(leds[0], HIGH);
+    digitalWrite(leds[1], HIGH);
+    digitalWrite(leds[2], HIGH);
+    digitalWrite(leds[3], HIGH);
+    delay(200);
+    digitalWrite(leds[0], LOW);
+    digitalWrite(leds[1], LOW);
+    digitalWrite(leds[2], LOW);
+    digitalWrite(leds[3], LOW);
+    delay(200);
+    digitalWrite(leds[cur], HIGH);
+  }
+  timeKeeper = millis();
   delay(10); // we like a little delay
 }
 

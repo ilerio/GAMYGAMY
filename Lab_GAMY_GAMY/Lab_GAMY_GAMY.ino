@@ -8,6 +8,8 @@ int ledPin_2 = 13;
 int ledPin_3 = 12;
 int ledPin_4 = 16;
 int leds[] = {ledPin_1, ledPin_2, ledPin_3, ledPin_4};
+byte seletLed[500];
+byte duration[500];
 volatile long lastEncoded = 0;
 volatile long encoderValue = 0;
 long lastencoderValue = 0;

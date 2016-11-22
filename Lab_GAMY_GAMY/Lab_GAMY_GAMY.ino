@@ -57,17 +57,17 @@ namespace Network {
   }
 
   // For internal use
-  String readData() {
+  String* readData() {
     // Read all the lines of the reply from server and print them to Serial
-    String data = "";
+    String* data = new String("");
     if(client.parsePacket() != 0) {
       while(client.peek() != -1)
-        data += client.read();
+        *data += client.read();
 
-      Serial.println(data);
+      Serial.println(*data);
       return data;
     }
-    return null;
+    return NULL;
   }
 
   void sendInitialHandshake() {
@@ -75,8 +75,8 @@ namespace Network {
   }
 
   boolean didReceiveInitialHandshake() {
-    String data = readData();
-    if(data != null && data.startsWith("HLO"))
+    String* data = readData();
+    if(data != NULL && data->startsWith("HLO"))
       return true;
     return false;
   }

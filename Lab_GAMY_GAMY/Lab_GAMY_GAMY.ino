@@ -18,6 +18,9 @@ namespace Network {
   // Use WiFiUDP class to create UDP connections
   WiFiUDP client;
 
+  // Which player are we?
+  byte player;
+  
   void connect() {
     Serial.println();
     Serial.println("Connecting to: " + String(WiFiSSID));
@@ -74,14 +77,24 @@ namespace Network {
     sendData("HLO");
   }
 
-  boolean didReceiveInitialHandshake() {
+  boolean didReceiveHandshake() {
     String* data = readData();
-    if(data != NULL && data->startsWith("HLO")) {
+    boolean response = false;
+    if(data != NULL) {
+      if(data->startsWith("HLO")) {
+        response = true;
+        player = 1;
+      } else if(data->startsWith("HI")) {
+        response = true;
+        player = 0;
+      }
       delete data;
-      return true;
+      return response;
     }
-    delete data;
-    return false;
+  }
+
+  void sendHandshakeResponse() {
+    sendData("HI");
   }
 }
 
@@ -140,7 +153,7 @@ void initialize() {
   Network::connect();
   Network::sendInitialHandshake();
   while(true) {
-    if(Network::didReceiveInitialHandshake())
+    if(Network::didReceiveHandshake())
       break;
 
     delay(10);

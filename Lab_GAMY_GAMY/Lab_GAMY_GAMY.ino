@@ -51,10 +51,19 @@ namespace Network {
   }
 
   // For internal use
-  void sendData(String data) {
+  void sendData(char* data) {
     client.beginPacket(hostIP,port);
     client.print("{\"game\":\"SimonSays\",\"payload\":\"");
-    client.print(data.c_str());
+    client.print(data);
+    client.print("\"}");
+    client.endPacket();
+  }
+
+  // For internal use
+  void sendData(String* data) {
+    client.beginPacket(hostIP,port);
+    client.print("{\"game\":\"SimonSays\",\"payload\":\"");
+    client.print(data->c_str());
     client.print("\"}");
     client.endPacket();
   }
@@ -96,6 +105,53 @@ namespace Network {
   void sendHandshakeResponse() {
     sendData("HI");
   }
+
+  // Use this to actually send the game data
+  void sendGameData(byte* selections,byte* durations,int length) {
+    String* data = new String("?");
+
+    *data += "selections=[";
+    for(int i = 0; i < length; ++i) {
+      if(selections[i] == NULL)
+        break;
+      if(i != 0) *data += ',';
+      *data += selections[i];
+    }
+
+    *data += "]&durations=[";
+    for(int i = 0; i < length; ++i) {
+      if(durations[i] == NULL)
+        break;
+      if(i != 0) *data += ',';
+      *data += durations[i];
+    }
+    *data += "]";
+
+    sendData(data);
+    delete data;
+  }
+
+  // Use this to receive the game data
+  boolean receiveGameData() {
+    String* data = readData();
+    boolean response = false;
+    if(data != NULL && data->startsWith("?")) {
+      data->remove(0,1);
+      String* temp = new String("");
+      for(int i = 0; data->charAt(i) != '='; ++i)
+        *temp += data->charAt(i);
+
+      if(temp->compareTo("selections") == 0) {
+      }
+
+      if(temp->compareTo("durations") == 0) {
+      }
+
+      delete temp;
+    }
+
+    delete data;
+  }
 }
 
 // declaration section
@@ -108,7 +164,8 @@ int ledPin_2 = 13;
 int ledPin_3 = 12;
 int ledPin_4 = 16;
 int leds[] = {ledPin_1, ledPin_2, ledPin_3, ledPin_4};
-
+byte selectLed[500];
+byte duration[500];
 volatile long lastEncoded = 0;
 volatile long encoderValue = 0;
 long lastencoderValue = 0;
@@ -119,8 +176,6 @@ int MSB, LSB, encoded, sum;
 // My Variables
 int i = -1;
 byte cur = 0;
-byte selectLed[500];
-byte duration[500];
 int timeKeeper;
 int startTime;
 bool initial = true; // for the initial start of the game (this is to initialize startTime)

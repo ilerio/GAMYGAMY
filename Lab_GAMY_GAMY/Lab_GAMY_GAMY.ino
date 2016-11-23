@@ -178,8 +178,10 @@ int i = -1;
 byte cur = 0;
 int timeKeeper;
 int startTime;
-bool initial = true; // for the initial start of the game (this is to initialize startTime)
 bool blinking = false;
+
+enum class State { Null, WaitingForButton, WaitingForData, Active, GameEnd };
+State state = State::Null;
 
 void setup() {
   Serial.begin (9600);
@@ -221,87 +223,55 @@ void initialize() {
 
     delay(10);
   }
+  if (Network::player == 1) {
+    state = State::WaitingForButton;
+  } else if (Network::player == 0) {
+    state = State::WaitingForData;
+  }
 }
 
 void loop() {
-  if (Network::player == 1 && digitalRead(buttonPin)) {
-    if (initial == true) {
-      startTime = millis();
-      initial = false;
-    }
-    if (!digitalRead(encoderButton) && !blinking && (timeKeeper - startTime < 5000)) {
-      // Blink the LED
-      blinking = true;
-      i++;
-      selectLed[i] = cur;
-      int k;
-      for (k = 0; k < 1; k++) {
-        digitalWrite(leds[cur], HIGH);
-        delay(200);
-        digitalWrite(leds[cur], LOW);
-        delay(200);
-      }
-      digitalWrite(leds[cur], HIGH);
-      blinking = false;
-    }
 
-    /*/[ileri]: This is mostly for testing purposes | could also be used to signal a waiting state
-    if (digitalRead(buttonPin) && !blinking) { // [ileri]: disabled for now
-      // Blink all LEDs
-      int k;
-      for (k = 0; k < 3; k++) {
-        digitalWrite(leds[0], HIGH);
-        digitalWrite(leds[1], HIGH);
-        digitalWrite(leds[2], HIGH);
-        digitalWrite(leds[3], HIGH);
-        delay(200);
-        digitalWrite(leds[0], LOW);
-        digitalWrite(leds[1], LOW);
-        digitalWrite(leds[2], LOW);
-        digitalWrite(leds[3], LOW);
-        delay(200);
-      }
-      digitalWrite(leds[cur], HIGH);
-      blinking = false;
-    }*/
+  if (Network::player == 1) {
+    switch (state) {
+      case State::WaitingForButton: {
+        // Waiting for start button to be pressed, LED 1 blinking
+      } break;
 
-    if (lastencoderValue != encoderValue && !blinking) {
-      //Serial.println(String("ev: ") + encoderValue);
-      //Serial.println(String("cur: ") + cur);
-      //Serial.println();
+      case State::WaitingForData: {
+        // Waiting to hear back from player 0 after pattern sent
+      } break;
 
-      if (lastencoderValue < encoderValue && encoderValue % 2 == 0) {
-        // change lights
-        digitalWrite(leds[cur], LOW);
-        cur++;
-        if (cur > 3) {
-          cur = 0;
-        }
-        digitalWrite(leds[cur], HIGH);
-      } else if (lastencoderValue > encoderValue && encoderValue % 2 == 0) {
-        // change lights
-        digitalWrite(leds[cur], LOW);
-        cur--;
-        if (cur < 0) {
-          cur = 3;
-        }
-        digitalWrite(leds[cur], HIGH);
-      }
-      lastencoderValue = encoderValue;
+      case State::Active: {
+        // Start button pressed
+        // Creating pattern
+      } break;
+
+      case State::GameEnd: {
+        // Display (using red or green led) winner/loser
+      } break;
     }
-  } else {
-    digitalWrite(leds[0], HIGH);
-    digitalWrite(leds[1], HIGH);
-    digitalWrite(leds[2], HIGH);
-    digitalWrite(leds[3], HIGH);
-    delay(200);
-    digitalWrite(leds[0], LOW);
-    digitalWrite(leds[1], LOW);
-    digitalWrite(leds[2], LOW);
-    digitalWrite(leds[3], LOW);
-    delay(200);
-    digitalWrite(leds[cur], HIGH);
+  } else if (Network::player == 0) {
+    switch (state) {
+      case State::WaitingForButton: {
+        // Once patern recived, LED 2 blinking | Waiting for start button press
+      } break;
+
+      case State::WaitingForData: {
+        // Waiting to recive pattern from player 1, All LEDs blinking
+      } break;
+
+      case State::Active: {
+        // Start button pressed
+        // Inputing pattern
+      } break;
+
+      case State::GameEnd: {
+        // Display (using red or green led) winner/loser
+      } break;
+    }
   }
+
   timeKeeper = millis();
   delay(10); // we like a little delay
 }

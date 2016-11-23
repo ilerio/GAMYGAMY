@@ -236,10 +236,12 @@ void loop() {
     switch (state) {
       case State::WaitingForButton: {
         // Waiting for start button to be pressed, LED 1 blinking
+        blinkLed(leds[0], 200);
       } break;
 
       case State::WaitingForData: {
-        // Waiting to hear back from player 0 after pattern sent
+        // Waiting to hear back from player 0 after pattern sent, All LEDs blinking
+        blinkAll(200);
       } break;
 
       case State::Active: {
@@ -255,10 +257,12 @@ void loop() {
     switch (state) {
       case State::WaitingForButton: {
         // Once patern recived, LED 2 blinking | Waiting for start button press
+        blinkLed(leds[1], 200);
       } break;
 
       case State::WaitingForData: {
         // Waiting to recive pattern from player 1, All LEDs blinking
+        blinkAll(200);
       } break;
 
       case State::Active: {
@@ -274,6 +278,28 @@ void loop() {
 
   timeKeeper = millis();
   delay(10); // we like a little delay
+}
+
+// Blinks a spesified led for a spesified delay (del)
+void blinkLed(int led, int del) {
+  digitalWrite(leds[led], HIGH);
+  delay(del);
+  digitalWrite(leds[led], LOW);
+  delay(del);
+}
+
+// Blinks all leds for a spesified delay (del)
+void blinkAll(int del) {
+  digitalWrite(leds[0], HIGH);
+  digitalWrite(leds[1], HIGH);
+  digitalWrite(leds[2], HIGH);
+  digitalWrite(leds[3], HIGH);
+  delay(del);
+  digitalWrite(leds[0], LOW);
+  digitalWrite(leds[1], LOW);
+  digitalWrite(leds[2], LOW);
+  digitalWrite(leds[3], LOW);
+  delay(del);
 }
 
 void updateEncoder() {

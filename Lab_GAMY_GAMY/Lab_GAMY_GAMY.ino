@@ -132,25 +132,55 @@ namespace Network {
   }
 
   // Use this to receive the game data
-  boolean receiveGameData() {
+  boolean receiveGameData(byte* selections,byte* durations) {
     String* data = readData();
     boolean response = false;
     if(data != NULL && data->startsWith("?")) {
-      data->remove(0,1);
-      String* temp = new String("");
-      for(int i = 0; data->charAt(i) != '='; ++i)
-        *temp += data->charAt(i);
-
-      if(temp->compareTo("selections") == 0) {
+      // Read in selections
+      String temp = "";
+      int dataIndex = data->indexOf("selections=[");
+      int selectionsIndex = 0;
+      // Is selections in the query?
+      if(dataIndex != 0) {
+        // Loop over each character until the end of the query array
+        for(int i = dataIndex; data->charAt(i) != ']'; ++i) {
+          if(isDigit(data->charAt(i)))
+            temp += data->charAt(i);
+          else {
+            if(temp.length() >= 0)
+              selections[selectionsIndex++] = temp.toInt();
+            temp = "";
+          }
+        }
       }
+      selections[selectionsIndex] = NULL;
 
-      if(temp->compareTo("durations") == 0) {
+      // Read in durations
+      temp = "";
+      dataIndex = data->indexOf("durations=[");
+      int durationsIndex = 0;
+      // Is durations in the query?
+      if(dataIndex != 0) {
+        // Loop over each character until the end of the query array
+        for(int i = dataIndex; data->charAt(i) != ']'; ++i) {
+          if(isDigit(data->charAt(i)))
+            temp += data->charAt(i);
+          else {
+            if(temp.length() >= 0)
+              durations[durationsIndex++] = temp.toInt();
+            temp = "";
+          }
+        }
       }
+      durations[durationsIndex] = NULL;
 
-      delete temp;
+      // We did receive data
+      response = true;
     }
 
+    // cleanup
     delete data;
+    return response;
   }
 }
 

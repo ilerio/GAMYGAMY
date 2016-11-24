@@ -176,6 +176,7 @@ int MSB, LSB, encoded, sum;
 // My Variables
 int i = -1;
 byte cur = 0;
+byte level = 0;
 int timeKeeper;
 int startTime;
 bool blinking = false;
@@ -237,6 +238,14 @@ void loop() {
       case State::WaitingForButton: {
         // Waiting for start button to be pressed, LED 1 blinking
         blinkLed(leds[0], 200);
+        if (digitalRead(buttonPin)) {
+          Serial.println("Start button pressed.");
+          debug();
+          startTime = millis();
+          state = State::Active;
+          digitalWrite(leds[level], HIGH);
+          cur = level;
+        }
       } break;
 
       case State::WaitingForData: {
@@ -258,6 +267,13 @@ void loop() {
       case State::WaitingForButton: {
         // Once patern recived, LED 2 blinking | Waiting for start button press
         blinkLed(leds[1], 200);
+        if (digitalRead(buttonPin)) {
+          Serial.println("Start button pressed.");
+          startTime = millis();
+          state = State::Active;
+          digitalWrite(leds[level], HIGH);
+          cur = level;
+        }
       } break;
 
       case State::WaitingForData: {
@@ -268,6 +284,40 @@ void loop() {
       case State::Active: {
         // Start button pressed
         // Inputing pattern
+        if (lastencoderValue != encoderValue && !blinking) {
+          if (lastencoderValue < encoderValue && encoderValue % 2 == 0) {
+            // change lights
+            digitalWrite(leds[cur], LOW);
+            cur++;
+            if (cur > 3) {
+              cur = 0;
+            }
+            digitalWrite(leds[cur], HIGH);
+          } else if (lastencoderValue > encoderValue && encoderValue % 2 == 0) {
+            // change lights
+            digitalWrite(leds[cur], LOW);
+            cur--;
+            if (cur < 0) {
+              cur = 3;
+            }
+            digitalWrite(leds[cur], HIGH);
+          }
+          lastencoderValue = encoderValue;
+        }
+
+        if (!digitalRead(encoderButton) && !blinking && (timeKeeper - startTime < 5000)) {
+          // Blink the LED
+          blinking = true;
+          i++;
+          selectLed[i] = cur;
+          int k;
+          blinkLed(leds[cur], 100);
+          digitalWrite(leds[cur], HIGH);
+          blinking = false;
+        } else if (timeKeeper - startTime > 5000) {
+          // send data | switch state
+          Serial.println("Pattern input done.");
+        }
       } break;
 
       case State::GameEnd: {
@@ -280,11 +330,17 @@ void loop() {
   delay(10); // we like a little delay
 }
 
+void debug() {
+  Serial.println("---------------------Debug---------------------");
+  Serial.print(String("\nlevel= ") + level + String("\n cur= ") + cur + String("\n blinking") + blinking);
+  Serial.println("--------------------EndDebug--------------------");
+}
+
 // Blinks a spesified led for a spesified delay (del)
 void blinkLed(int led, int del) {
-  digitalWrite(leds[led], HIGH);
+  digitalWrite(led, HIGH);
   delay(del);
-  digitalWrite(leds[led], LOW);
+  digitalWrite(led, LOW);
   delay(del);
 }
 

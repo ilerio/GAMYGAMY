@@ -324,7 +324,7 @@ void loop() {
           state = State::WaitingForData;
           selectLed[i+1] = NULL;
           duration[i+1] = NULL;
-          sendGameData(selectLed, duration, 500);
+          Network::sendGameData(selectLed, duration, 500);
           Serial.println("Game data sent.");
         }
       } break;
@@ -338,7 +338,7 @@ void loop() {
       case State::WaitingForButton: {
         // Once patern recived, LED 2 blinking | Waiting for start button press
         blinkLed(leds[1], 200);
-        bool dataRecived = receiveGameData(selectLed, duration);
+        bool dataRecived = Network::receiveGameData(selectLed, duration);
         if (digitalRead(buttonPin) && dataRecived) {
           Serial.println("Start button pressed.");
           startTime = millis();
@@ -372,7 +372,7 @@ void loop() {
 
 void debug() {
   Serial.println("---------------------Debug---------------------");
-  Serial.print(String("\nlevel= ") + level + String("\ncur= ") + cur + String("\nblinking") + blinking + Strning("\n"));
+  Serial.print(String("\nlevel= ") + level + String("\ncur= ") + cur + String("\nblinking") + blinking + String("\n"));
   Serial.println("--------------------EndDebug--------------------");
 }
 

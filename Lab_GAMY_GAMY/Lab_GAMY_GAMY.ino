@@ -338,19 +338,23 @@ void loop() {
       case State::WaitingForButton: {
         // Once patern recived, LED 2 blinking | Waiting for start button press
         blinkLed(leds[1], 200);
-        bool dataRecived = Network::receiveGameData(selectLed, duration);
-        if (digitalRead(buttonPin) && dataRecived) {
+        if (digitalRead(buttonPin)) {
           Serial.println("Start button pressed.");
-          startTime = millis();
+          /*startTime = millis();
           state = State::Active;
           digitalWrite(leds[level], HIGH);
-          cur = level;
+          cur = level;*/
         }
       } break;
 
       case State::WaitingForData: {
         // Waiting to recive pattern from player 1, All LEDs blinking
         blinkAll(200);
+        bool dataRecived = Network::receiveGameData(selectLed, duration);
+        if (dataRecived)
+          while (selectLed[i+1] != NULL) {
+            Serial.println(selectLed[++i]);
+          }
       } break;
 
       case State::Active: {

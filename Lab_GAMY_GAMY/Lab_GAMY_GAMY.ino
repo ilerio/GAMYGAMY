@@ -203,7 +203,6 @@ int lastMSB = 0;
 int lastLSB = 0;
 int MSB, LSB, encoded, sum;
 
-// My Variables
 int i = -1;
 byte cur = 0;
 byte level = 0;
@@ -211,6 +210,7 @@ int timeKeeper;
 int startTime;
 bool blinking = false;
 
+// All states that the game can be in
 enum class State { Null, WaitingForButton, WaitingForData, Active, GameEnd };
 State state = State::Null;
 
@@ -254,6 +254,7 @@ void initialize() {
 
     delay(10);
   }
+  // If connected and player 1 goto WaitingForButton state
   if (Network::player == 1) {
     state = State::WaitingForButton;
   } else if (Network::player == 0) {
@@ -270,7 +271,7 @@ void loop() {
         blinkLed(leds[0], 200);
         if (digitalRead(buttonPin)) {
           Serial.println("Start button pressed.");
-          debug();
+          //debug();
           startTime = millis();
           state = State::Active;
           digitalWrite(leds[level], HIGH);
@@ -286,34 +287,6 @@ void loop() {
       case State::Active: {
         // Start button pressed
         // Creating pattern
-      } break;
-
-      case State::GameEnd: {
-        // Display (using red or green led) winner/loser
-      } break;
-    }
-  } else if (Network::player == 0) {
-    switch (state) {
-      case State::WaitingForButton: {
-        // Once patern recived, LED 2 blinking | Waiting for start button press
-        blinkLed(leds[1], 200);
-        if (digitalRead(buttonPin)) {
-          Serial.println("Start button pressed.");
-          startTime = millis();
-          state = State::Active;
-          digitalWrite(leds[level], HIGH);
-          cur = level;
-        }
-      } break;
-
-      case State::WaitingForData: {
-        // Waiting to recive pattern from player 1, All LEDs blinking
-        blinkAll(200);
-      } break;
-
-      case State::Active: {
-        // Start button pressed
-        // Inputing pattern
         if (lastencoderValue != encoderValue && !blinking) {
           if (lastencoderValue < encoderValue && encoderValue % 2 == 0) {
             // change lights
@@ -340,6 +313,7 @@ void loop() {
           blinking = true;
           i++;
           selectLed[i] = cur;
+          duration[i] = 100;
           int k;
           blinkLed(leds[cur], 100);
           digitalWrite(leds[cur], HIGH);
@@ -347,7 +321,43 @@ void loop() {
         } else if (timeKeeper - startTime > 5000) {
           // send data | switch state
           Serial.println("Pattern input done.");
+          state = State::WaitingForData;
+          selectLed[i+1] = NULL;
+          duration[i+1] = NULL;
+          sendGameData(selectLed, duration, 500);
+          Serial.println("Game data sent.");
         }
+      } break;
+
+      case State::GameEnd: {
+        // Display (using red or green led) winner/loser
+      } break;
+    }
+  } else if (Network::player == 0) {
+    switch (state) {
+      case State::WaitingForButton: {
+        // Once patern recived, LED 2 blinking | Waiting for start button press
+        blinkLed(leds[1], 200);
+        bool dataRecived = receiveGameData(selectLed, duration);
+        if (digitalRead(buttonPin) && dataRecived) {
+          Serial.println("Start button pressed.");
+          startTime = millis();
+          state = State::Active;
+          digitalWrite(leds[level], HIGH);
+          cur = level;
+        }
+      } break;
+
+      case State::WaitingForData: {
+        // Waiting to recive pattern from player 1, All LEDs blinking
+        blinkAll(200);
+      } break;
+
+      case State::Active: {
+        // Start button pressed
+        // Inputing pattern
+        Serial.println("Game state ACTIVE");
+        state = State::Null; // for debugging to avoid serial spamming
       } break;
 
       case State::GameEnd: {
@@ -362,7 +372,7 @@ void loop() {
 
 void debug() {
   Serial.println("---------------------Debug---------------------");
-  Serial.print(String("\nlevel= ") + level + String("\n cur= ") + cur + String("\n blinking") + blinking);
+  Serial.print(String("\nlevel= ") + level + String("\ncur= ") + cur + String("\nblinking") + blinking + Strning("\n"));
   Serial.println("--------------------EndDebug--------------------");
 }
 

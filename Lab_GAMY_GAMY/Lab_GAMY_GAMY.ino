@@ -281,8 +281,8 @@ void loop() {
 
         if (!digitalRead(encoderButton) && (timeKeeper - startTime < 10000)) {
           // Blink the LED
-          debug("Active");
           i++;
+          debug("Active");
           selectLed[i] = cur;
           blinkLed(leds[cur], 100);
           digitalWrite(leds[cur], HIGH);
@@ -297,6 +297,7 @@ void loop() {
           // progress level by 1 (should cap and end game by level 3 TODO)
           level++;
           Network::player = 0;
+          i = -1;
           Serial.println("Score checked and recorded player 1 -> player 2 and now should wait to recive patern.");
         }
       } break;
@@ -311,6 +312,7 @@ void loop() {
         // Once patern recived, LED 2 blinking | Waiting for start button press
         blinkLed(leds[1], 200);
         if (digitalRead(buttonPin)) {
+          debug("WaitingForButton");
           Serial.println("Start button pressed.");
           startTime = millis();
           state = State::Active;
@@ -367,24 +369,32 @@ void loop() {
 
         if (!digitalRead(encoderButton)) {
           // Blink the LED
-          debug("Active");
           i++;
-          selectLed[i] = cur;
+          debug("Active");
+          answerInput[i] = cur;
           blinkLed(leds[cur], 100);
           digitalWrite(leds[cur], HIGH);
         }
 
-        if (digitalRead(buttonPin)) {
+        if (digitalRead(buttonPin) && timeKeeper - startTime > 1000) {
           // send data | switch state
           //(compear and score)
-          int k = -1;
+          allLow();
+          int k = 0;
           while (selectLed[k] != 255) {
             // Compear answer and score based on accuracy and time //TODO
+            if (answerInput[k] == selectLed[k]) {
+              Serial.println(String("k(") + k + String("): answerInput[") + answerInput[k] + String("] == selectLed[") + selectLed[k] + String("] - Correct!"));
+            } else {
+              Serial.println(String("k(") + k + String("): answerInput[") + answerInput[k] + String("] == selectLed[") + selectLed[k] + String("] - Wrong."));
+            }
+            k++;
           }
 
           Serial.println("Answer input done.");
           state = State::WaitingForButton;
           Network::player = 1;
+          i = -1;
           Serial.println("Score checked and recorded player 2 -> player 1 and now should recored pattern.");
         }
       } break;
@@ -428,6 +438,14 @@ void blinkAll(int del) {
   digitalWrite(leds[2], LOW);
   digitalWrite(leds[3], LOW);
   delay(del);
+}
+
+// Blinks all leds for a spesified delay (del)
+void allLow() {
+  digitalWrite(leds[0], LOW);
+  digitalWrite(leds[1], LOW);
+  digitalWrite(leds[2], LOW);
+  digitalWrite(leds[3], LOW);
 }
 
 void updateEncoder() {

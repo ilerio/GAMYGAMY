@@ -69,6 +69,15 @@ namespace Network {
   }
 
   // For internal use
+  void sendData(String data) {
+    client.beginPacket(hostIP,port);
+    client.print("{\"game\":\"SimonSays\",\"payload\":\"");
+    client.print(data.c_str());
+    client.print("\"}");
+    client.endPacket();
+  }
+
+  // For internal use
   String* readData() {
     // Read all the lines of the reply from server and print them to Serial
     if(client.parsePacket() != 0) {
@@ -151,6 +160,21 @@ namespace Network {
     // cleanup
     delete data;
     return response;
+  }
+
+  void sendGameScore(int score) {
+    sendData("S" + String(score));
+  }
+
+  int receiveGameScore() {
+    String* data = readData();
+    int score = -1;
+    if(data->startsWith("S")) {
+      data->remove(0,1);
+      score = data->toInt();
+    }
+    
+    return score;
   }
 }
 

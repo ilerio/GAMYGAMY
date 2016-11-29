@@ -12,7 +12,7 @@ namespace Network {
   //////////////////////
   // Host and Port Definitions
   //////////////////////
-  IPAddress hostIP(192, 168, 1, 74); // (original)hostIP(192, 168, 10, 1);
+  IPAddress hostIP(192, 168, 10, 1); // (original)hostIP(192, 168, 10, 1);
   const uint16_t port = 13100;
 
   // Use WiFiUDP class to create UDP connections
@@ -64,6 +64,15 @@ namespace Network {
     client.beginPacket(hostIP,port);
     client.print("{\"game\":\"SimonSays\",\"payload\":\"");
     client.print(data->c_str());
+    client.print("\"}");
+    client.endPacket();
+  }
+
+  // For internal use
+  void sendData(String data) {
+    client.beginPacket(hostIP,port);
+    client.print("{\"game\":\"SimonSays\",\"payload\":\"");
+    client.print(data.c_str());
     client.print("\"}");
     client.endPacket();
   }
@@ -151,6 +160,21 @@ namespace Network {
     // cleanup
     delete data;
     return response;
+  }
+
+  void sendGameScore(int score) {
+    sendData("S" + String(score));
+  }
+
+  int receiveGameScore() {
+    String* data = readData();
+    int score = -1;
+    if(data->startsWith("S")) {
+      data->remove(0,1);
+      score = data->toInt();
+    }
+    
+    return score;
   }
 }
 
@@ -293,9 +317,7 @@ void loop() {
           selectLed[i+1] = 255;
           Network::sendGameData(selectLed, 500);
           Serial.println("Game data sent.");
-
-          // progress level by 1 (should cap and end game by level 3 TODO)
-          level++;
+       
           Network::player = 0;
           i = -1;
           Serial.println("Score checked and recorded player 1 -> player 2 and now should wait to recive patern.");
@@ -385,16 +407,28 @@ void loop() {
             // Compear answer and score based on accuracy and time //TODO
             if (answerInput[k] == selectLed[k]) {
               Serial.println(String("k(") + k + String("): answerInput[") + answerInput[k] + String("] == selectLed[") + selectLed[k] + String("] - Correct!"));
+              score++;
             } else {
               Serial.println(String("k(") + k + String("): answerInput[") + answerInput[k] + String("] == selectLed[") + selectLed[k] + String("] - Wrong."));
+              if (score > 0) {
+                score--;
+              }
             }
             k++;
+          }
+
+          // Checks to see if you are going into level 3 and enter GameEnd state
+          if (level == 2) {
+            state = State::GameEnd;
+            break;
           }
 
           Serial.println("Answer input done.");
           state = State::WaitingForButton;
           Network::player = 1;
           i = -1;
+          // progress level by 1 (should cap and end game by level 3 TODO)
+          level++;
           Serial.println("Score checked and recorded player 2 -> player 1 and now should recored pattern.");
         }
       } break;
@@ -402,6 +436,9 @@ void loop() {
       case State::GameEnd: {
         // Display (using red or green led) winner/loser
         debugState = "GameEnd";
+
+        
+        
       } break;
     }
   }
@@ -413,8 +450,9 @@ void loop() {
 void debug(String debugState) {
   Serial.println("---------------------Debug---------------------");
   Serial.print(String("player = ") + Network::player + String("\nlevel = ") +
-  level + String("\ncur = ") + cur + String("\ni = ") + i +
-  String("\nstate = ") + debugState + String("\n"));
+  level + String("\ncur = ") + cur + String("\ni = ") + i + 
+  String("\nscore = ") + score + String("\nstate = ") + debugState + 
+  String("\n"));
   Serial.println("--------------------EndDebug-------------------");
 }
 

@@ -12,7 +12,7 @@ namespace Network {
   //////////////////////
   // Host and Port Definitions
   //////////////////////
-  IPAddress hostIP(192, 168, 10, 1);
+  IPAddress hostIP(192, 168, 1, 74); // (original)hostIP(192, 168, 10, 1);
   const uint16_t port = 13100;
 
   // Use WiFiUDP class to create UDP connections
@@ -107,23 +107,15 @@ namespace Network {
   }
 
   // Use this to actually send the game data
-  void sendGameData(byte* selections,byte* durations,int length) {
+  void sendGameData(byte* selections,int length) {
     String* data = new String("?");
 
     *data += "selections=[";
     for(int i = 0; i < length; ++i) {
-      if(selections[i] == NULL)
+      if(selections[i] == 255)
         break;
       if(i != 0) *data += ',';
       *data += selections[i];
-    }
-
-    *data += "]&durations=[";
-    for(int i = 0; i < length; ++i) {
-      if(durations[i] == NULL)
-        break;
-      if(i != 0) *data += ',';
-      *data += durations[i];
     }
     *data += "]";
 
@@ -132,47 +124,25 @@ namespace Network {
   }
 
   // Use this to receive the game data
-  boolean receiveGameData(byte* selections,byte* durations) {
+  boolean receiveGameData(byte* selections) {
     String* data = readData();
     boolean response = false;
     if(data != NULL && data->startsWith("?")) {
       // Read in selections
       String temp = "";
-      int dataIndex = data->indexOf("selections=[");
+      int dataIndex = data->indexOf("[");
       int selectionsIndex = 0;
       // Is selections in the query?
       if(dataIndex != 0) {
         // Loop over each character until the end of the query array
-        for(int i = dataIndex; data->charAt(i) != ']'; ++i) {
-          if(isDigit(data->charAt(i)))
-            temp += data->charAt(i);
-          else {
-            if(temp.length() >= 0)
-              selections[selectionsIndex++] = temp.toInt();
-            temp = "";
+        for(int i = dataIndex; data->charAt(i) != ']'; i++) {
+          if (isDigit(data->charAt(i))) {
+            temp = data->charAt(i);
+            selections[selectionsIndex++] = temp.toInt();
           }
         }
       }
-      selections[selectionsIndex] = NULL;
-
-      // Read in durations
-      temp = "";
-      dataIndex = data->indexOf("durations=[");
-      int durationsIndex = 0;
-      // Is durations in the query?
-      if(dataIndex != 0) {
-        // Loop over each character until the end of the query array
-        for(int i = dataIndex; data->charAt(i) != ']'; ++i) {
-          if(isDigit(data->charAt(i)))
-            temp += data->charAt(i);
-          else {
-            if(temp.length() >= 0)
-              durations[durationsIndex++] = temp.toInt();
-            temp = "";
-          }
-        }
-      }
-      durations[durationsIndex] = NULL;
+      selections[selectionsIndex] = 255;
 
       // We did receive data
       response = true;
@@ -195,7 +165,7 @@ int ledPin_3 = 12;
 int ledPin_4 = 16;
 int leds[] = {ledPin_1, ledPin_2, ledPin_3, ledPin_4};
 byte selectLed[500];
-byte duration[500];
+byte answerInput[500]; // for checking correct input on player 2(0)
 volatile long lastEncoded = 0;
 volatile long encoderValue = 0;
 long lastencoderValue = 0;
@@ -204,11 +174,12 @@ int lastLSB = 0;
 int MSB, LSB, encoded, sum;
 
 int i = -1;
-byte cur = 0;
+int cur = 0;
 byte level = 0;
 int timeKeeper;
 int startTime;
-bool blinking = false;
+String debugState;
+int score = 0;
 
 // All states that the game can be in
 enum class State { Null, WaitingForButton, WaitingForData, Active, GameEnd };
@@ -271,7 +242,7 @@ void loop() {
         blinkLed(leds[0], 200);
         if (digitalRead(buttonPin)) {
           Serial.println("Start button pressed.");
-          //debug();
+          debug("WaitingForButton");
           startTime = millis();
           state = State::Active;
           digitalWrite(leds[level], HIGH);
@@ -287,7 +258,7 @@ void loop() {
       case State::Active: {
         // Start button pressed
         // Creating pattern
-        if (lastencoderValue != encoderValue && !blinking) {
+        if (lastencoderValue != encoderValue) {
           if (lastencoderValue < encoderValue && encoderValue % 2 == 0) {
             // change lights
             digitalWrite(leds[cur], LOW);
@@ -308,24 +279,26 @@ void loop() {
           lastencoderValue = encoderValue;
         }
 
-        if (!digitalRead(encoderButton) && !blinking && (timeKeeper - startTime < 5000)) {
+        if (!digitalRead(encoderButton) && (timeKeeper - startTime < 10000)) {
           // Blink the LED
-          blinking = true;
           i++;
+          debug("Active");
           selectLed[i] = cur;
-          duration[i] = 100;
-          int k;
           blinkLed(leds[cur], 100);
           digitalWrite(leds[cur], HIGH);
-          blinking = false;
-        } else if (timeKeeper - startTime > 5000) {
+        } else if (timeKeeper - startTime > 10000) {
           // send data | switch state
           Serial.println("Pattern input done.");
           state = State::WaitingForData;
-          selectLed[i+1] = NULL;
-          duration[i+1] = NULL;
-          Network::sendGameData(selectLed, duration, 500);
+          selectLed[i+1] = 255;
+          Network::sendGameData(selectLed, 500);
           Serial.println("Game data sent.");
+
+          // progress level by 1 (should cap and end game by level 3 TODO)
+          level++;
+          Network::player = 0;
+          i = -1;
+          Serial.println("Score checked and recorded player 1 -> player 2 and now should wait to recive patern.");
         }
       } break;
 
@@ -339,33 +312,96 @@ void loop() {
         // Once patern recived, LED 2 blinking | Waiting for start button press
         blinkLed(leds[1], 200);
         if (digitalRead(buttonPin)) {
+          debug("WaitingForButton");
           Serial.println("Start button pressed.");
-          /*startTime = millis();
+          startTime = millis();
           state = State::Active;
           digitalWrite(leds[level], HIGH);
-          cur = level;*/
+          cur = level;
         }
       } break;
 
       case State::WaitingForData: {
         // Waiting to recive pattern from player 1, All LEDs blinking
         blinkAll(200);
-        bool dataRecived = Network::receiveGameData(selectLed, duration);
-        if (dataRecived)
-          while (selectLed[i+1] != NULL) {
-            Serial.println(selectLed[++i]);
+        bool dataRecived = Network::receiveGameData(selectLed);
+        if (dataRecived) {
+          // Signal dataRecived
+          blinkAll(900);
+          // Pattern playback
+          int k = -1;
+          while (selectLed[k+1] != 255) {
+            k++;
+            Serial.println(selectLed[k]);
+            digitalWrite(leds[selectLed[k]], HIGH);
+            delay(600);
+            digitalWrite(leds[selectLed[k]], LOW);
+            delay(600);
           }
+          delay(1000);
+          state = State::WaitingForButton;
+        }
       } break;
 
       case State::Active: {
         // Start button pressed
         // Inputing pattern
-        Serial.println("Game state ACTIVE");
-        state = State::Null; // for debugging to avoid serial spamming
+        if (lastencoderValue != encoderValue) {
+          if (lastencoderValue < encoderValue && encoderValue % 2 == 0) {
+            // change lights
+            digitalWrite(leds[cur], LOW);
+            cur++;
+            if (cur > 3) {
+              cur = 0;
+            }
+            digitalWrite(leds[cur], HIGH);
+          } else if (lastencoderValue > encoderValue && encoderValue % 2 == 0) {
+            // change lights
+            digitalWrite(leds[cur], LOW);
+            cur--;
+            if (cur < 0) {
+              cur = 3;
+            }
+            digitalWrite(leds[cur], HIGH);
+          }
+          lastencoderValue = encoderValue;
+        }
+
+        if (!digitalRead(encoderButton)) {
+          // Blink the LED
+          i++;
+          debug("Active");
+          answerInput[i] = cur;
+          blinkLed(leds[cur], 100);
+          digitalWrite(leds[cur], HIGH);
+        }
+
+        if (digitalRead(buttonPin) && timeKeeper - startTime > 1000) {
+          // send data | switch state
+          //(compear and score)
+          allLow();
+          int k = 0;
+          while (selectLed[k] != 255) {
+            // Compear answer and score based on accuracy and time //TODO
+            if (answerInput[k] == selectLed[k]) {
+              Serial.println(String("k(") + k + String("): answerInput[") + answerInput[k] + String("] == selectLed[") + selectLed[k] + String("] - Correct!"));
+            } else {
+              Serial.println(String("k(") + k + String("): answerInput[") + answerInput[k] + String("] == selectLed[") + selectLed[k] + String("] - Wrong."));
+            }
+            k++;
+          }
+
+          Serial.println("Answer input done.");
+          state = State::WaitingForButton;
+          Network::player = 1;
+          i = -1;
+          Serial.println("Score checked and recorded player 2 -> player 1 and now should recored pattern.");
+        }
       } break;
 
       case State::GameEnd: {
         // Display (using red or green led) winner/loser
+        debugState = "GameEnd";
       } break;
     }
   }
@@ -374,10 +410,12 @@ void loop() {
   delay(10); // we like a little delay
 }
 
-void debug() {
+void debug(String debugState) {
   Serial.println("---------------------Debug---------------------");
-  Serial.print(String("\nlevel= ") + level + String("\ncur= ") + cur + String("\nblinking") + blinking + String("\n"));
-  Serial.println("--------------------EndDebug--------------------");
+  Serial.print(String("player = ") + Network::player + String("\nlevel = ") +
+  level + String("\ncur = ") + cur + String("\ni = ") + i +
+  String("\nstate = ") + debugState + String("\n"));
+  Serial.println("--------------------EndDebug-------------------");
 }
 
 // Blinks a spesified led for a spesified delay (del)
@@ -400,6 +438,14 @@ void blinkAll(int del) {
   digitalWrite(leds[2], LOW);
   digitalWrite(leds[3], LOW);
   delay(del);
+}
+
+// Blinks all leds for a spesified delay (del)
+void allLow() {
+  digitalWrite(leds[0], LOW);
+  digitalWrite(leds[1], LOW);
+  digitalWrite(leds[2], LOW);
+  digitalWrite(leds[3], LOW);
 }
 
 void updateEncoder() {

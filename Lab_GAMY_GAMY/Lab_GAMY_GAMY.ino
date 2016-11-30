@@ -6,12 +6,8 @@ namespace Network {
   //////////////////////
   // WiFi Definitions
   //////////////////////
-  //const char WiFiSSID[] = "chop";
-  //const char WiFiPSK[] = "butch3rs";
-  //const char WiFiSSID[] = "Loading...";
-  //const char WiFiPSK[] = "Ilostmyshotgun1";
-  const char WiFiSSID[] = "HAL9000";
-  const char WiFiPSK[] = "securedd";
+  const char WiFiSSID[] = "chop";
+  const char WiFiPSK[] = "butch3rs";
 
   //////////////////////
   // Host and Port Definitions
@@ -310,14 +306,14 @@ void loop() {
           lastencoderValue = encoderValue;
         }
 
-        if (!digitalRead(encoderButton) && (timeKeeper - startTime < 10000)) {
+        if (!digitalRead(encoderButton) && (timeKeeper - startTime < 8000)) {
           // Blink the LED
           i++;
           debug("Active");
           selectLed[i] = cur;
           blinkLed(leds[cur], 100);
           digitalWrite(leds[cur], HIGH);
-        } else if (timeKeeper - startTime > 10000) {
+        } else if (timeKeeper - startTime > 8000 || (digitalRead(buttonPin) && timeKeeper - startTime > 1000)) {
           // send data | switch state
           Serial.println("Pattern input done.");
           state = State::WaitingForData;
@@ -327,12 +323,25 @@ void loop() {
 
           Network::player = 0;
           i = -1;
+          // progress level by 1 (should cap and end game after level 3)
+          level++;
           Serial.println("Score checked and recorded player 1 -> player 2 and now should wait to recive patern.");
         }
       } break;
 
       case State::GameEnd: {
         // Display (using red or green led) winner/loser
+        Network::sendGameScore(score);
+
+        p2Score = Network::receiveGameScore();
+        if (p2Score != -1) {
+          if (score > p2Score)
+            digitalWrite(leds[1], HIGH);
+          else
+            digitalWrite(leds[0], HIGH);
+
+          state = State::Null;
+        }
       } break;
     }
   } else if (Network::player == 0) {
@@ -353,11 +362,6 @@ void loop() {
       case State::WaitingForData: {
         // Waiting to recive pattern from player 1, All LEDs blinking
         blinkAll(200);
-        p2Score = Network::receiveGameScore();
-        if (p2Score != -1 && level == 1) {
-          state = State::GameEnd;
-        }
-
         bool dataRecived = Network::receiveGameData(selectLed);
         if (dataRecived) {
           // Signal dataRecived
@@ -431,7 +435,7 @@ void loop() {
 
           Network::player = 1;
           // Checks to see if you are going on level 3 and enter GameEnd state
-          if (level == 1) {
+          if (level == 3) {
             state = State::GameEnd;
             break;
           }
@@ -439,8 +443,6 @@ void loop() {
           Serial.println("Answer input done.");
           state = State::WaitingForButton;
           i = -1;
-          // progress level by 1 (should cap and end game by level 3)
-          level++;
           Serial.println("Score checked and recorded player 2 -> player 1 and now should recored pattern.");
         }
       } break;
@@ -449,11 +451,7 @@ void loop() {
         // Display (using red or green led) winner/loser
         debugState = "GameEnd";
 
-        if (Network::player == 1) {
-          Network::sendGameScore(score);
-        }
-
-        p2Score = Network::receiveGameScore();
+        // Player 2(0) should already have this from above
         if (p2Score != -1) {
           if (score > p2Score)
             digitalWrite(leds[1], HIGH);

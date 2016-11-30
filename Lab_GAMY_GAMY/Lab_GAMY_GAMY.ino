@@ -8,13 +8,15 @@ namespace Network {
   //////////////////////
   //const char WiFiSSID[] = "chop";
   //const char WiFiPSK[] = "butch3rs";
-  const char WiFiSSID[] = "Loading...";
-  const char WiFiPSK[] = "Ilostmyshotgun1";
+  //const char WiFiSSID[] = "Loading...";
+  //const char WiFiPSK[] = "Ilostmyshotgun1";
+  const char WiFiSSID[] = "HAL9000";
+  const char WiFiPSK[] = "securedd";
 
   //////////////////////
   // Host and Port Definitions
   //////////////////////
-  IPAddress hostIP(192, 168, 1, 134); // (original)hostIP(192, 168, 10, 1);
+  IPAddress hostIP(192, 168, 0, 6); // (original)hostIP(192, 168, 10, 1);
   const uint16_t port = 13100;
 
   // Use WiFiUDP class to create UDP connections
@@ -109,8 +111,8 @@ namespace Network {
         player = 0;
       }
       delete data;
-      return response;
     }
+    return response;
   }
 
   void sendHandshakeResponse() {
@@ -157,10 +159,11 @@ namespace Network {
 
       // We did receive data
       response = true;
+
+      // cleanup
+      delete data;
     }
 
-    // cleanup
-    delete data;
     return response;
   }
 
@@ -171,12 +174,12 @@ namespace Network {
   int receiveGameScore() {
     String* data = readData();
     int score = -1;
-    if(data->startsWith("S")) {
+    if(data != NULL && data->startsWith("S")) {
       data->remove(0,1);
       score = data->toInt();
+      delete data;
     }
 
-    delete data;
     return score;
   }
 }

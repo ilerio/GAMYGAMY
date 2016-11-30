@@ -337,8 +337,10 @@ void loop() {
         if (p2Score != -1) {
           if (score > p2Score)
             digitalWrite(leds[1], HIGH);
-          else
+          else if (score < p2Score)
             digitalWrite(leds[0], HIGH);
+          else
+            digitalWrite(led[2], HIGH);
 
           state = State::Null;
         }

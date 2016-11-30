@@ -173,7 +173,8 @@ namespace Network {
       data->remove(0,1);
       score = data->toInt();
     }
-    
+
+    delete data;
     return score;
   }
 }

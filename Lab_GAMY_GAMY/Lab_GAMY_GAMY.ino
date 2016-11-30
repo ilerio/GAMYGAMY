@@ -176,6 +176,7 @@ namespace Network {
       score = data->toInt();
     }
 
+    delete data;
     return score;
   }
 }

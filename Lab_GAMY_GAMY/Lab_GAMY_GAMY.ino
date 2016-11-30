@@ -12,7 +12,7 @@ namespace Network {
   //////////////////////
   // Host and Port Definitions
   //////////////////////
-  IPAddress hostIP(192, 168, 0, 6); // (original)hostIP(192, 168, 10, 1);
+  IPAddress hostIP(192, 168, 10, 1); // (original)hostIP(192, 168, 10, 1);
   const uint16_t port = 13100;
 
   // Use WiFiUDP class to create UDP connections
@@ -323,8 +323,6 @@ void loop() {
 
           Network::player = 0;
           i = -1;
-          // progress level by 1 (should cap and end game after level 3)
-          level++;
           Serial.println("Score checked and recorded player 1 -> player 2 and now should wait to recive patern.");
         }
       } break;
@@ -364,6 +362,12 @@ void loop() {
       case State::WaitingForData: {
         // Waiting to recive pattern from player 1, All LEDs blinking
         blinkAll(200);
+        // Checks to see if you are going on level 3 and enter GameEnd state
+        if (level == 1) {
+          state = State::GameEnd;
+          break;
+        }
+
         bool dataRecived = Network::receiveGameData(selectLed);
         if (dataRecived) {
           // Signal dataRecived
@@ -436,15 +440,12 @@ void loop() {
           }
 
           Network::player = 1;
-          // Checks to see if you are going on level 3 and enter GameEnd state
-          if (level == 3) {
-            state = State::GameEnd;
-            break;
-          }
 
           Serial.println("Answer input done.");
           state = State::WaitingForButton;
           i = -1;
+          // progress level by 1 (should cap and end game after level 3)
+          level++;
           Serial.println("Score checked and recorded player 2 -> player 1 and now should recored pattern.");
         }
       } break;

@@ -6,13 +6,15 @@ namespace Network {
   //////////////////////
   // WiFi Definitions
   //////////////////////
-  const char WiFiSSID[] = "chop";
-  const char WiFiPSK[] = "butch3rs";
+  //const char WiFiSSID[] = "chop";
+  //const char WiFiPSK[] = "butch3rs";
+  const char WiFiSSID[] = "Loading...";
+  const char WiFiPSK[] = "Ilostmyshotgun1";
 
   //////////////////////
   // Host and Port Definitions
   //////////////////////
-  IPAddress hostIP(192, 168, 10, 1); // (original)hostIP(192, 168, 10, 1);
+  IPAddress hostIP(192, 168, 1, 134); // (original)hostIP(192, 168, 10, 1);
   const uint16_t port = 13100;
 
   // Use WiFiUDP class to create UDP connections
@@ -173,7 +175,7 @@ namespace Network {
       data->remove(0,1);
       score = data->toInt();
     }
-    
+
     return score;
   }
 }
@@ -204,6 +206,7 @@ int timeKeeper;
 int startTime;
 String debugState;
 int score = 0;
+int p2Score = -1;
 
 // All states that the game can be in
 enum class State { Null, WaitingForButton, WaitingForData, Active, GameEnd };
@@ -317,7 +320,7 @@ void loop() {
           selectLed[i+1] = 255;
           Network::sendGameData(selectLed, 500);
           Serial.println("Game data sent.");
-       
+
           Network::player = 0;
           i = -1;
           Serial.println("Score checked and recorded player 1 -> player 2 and now should wait to recive patern.");
@@ -346,6 +349,11 @@ void loop() {
       case State::WaitingForData: {
         // Waiting to recive pattern from player 1, All LEDs blinking
         blinkAll(200);
+        p2Score = Network::receiveGameScore();
+        if (p2Score != -1 && level == 1) {
+          state = State::GameEnd;
+        }
+
         bool dataRecived = Network::receiveGameData(selectLed);
         if (dataRecived) {
           // Signal dataRecived
@@ -404,7 +412,7 @@ void loop() {
           allLow();
           int k = 0;
           while (selectLed[k] != 255) {
-            // Compear answer and score based on accuracy and time //TODO
+            // Compear answer and score based on accuracy and time
             if (answerInput[k] == selectLed[k]) {
               Serial.println(String("k(") + k + String("): answerInput[") + answerInput[k] + String("] == selectLed[") + selectLed[k] + String("] - Correct!"));
               score++;
@@ -417,17 +425,17 @@ void loop() {
             k++;
           }
 
-          // Checks to see if you are going into level 3 and enter GameEnd state
-          if (level == 2) {
+          Network::player = 1;
+          // Checks to see if you are going on level 3 and enter GameEnd state
+          if (level == 1) {
             state = State::GameEnd;
             break;
           }
 
           Serial.println("Answer input done.");
           state = State::WaitingForButton;
-          Network::player = 1;
           i = -1;
-          // progress level by 1 (should cap and end game by level 3 TODO)
+          // progress level by 1 (should cap and end game by level 3)
           level++;
           Serial.println("Score checked and recorded player 2 -> player 1 and now should recored pattern.");
         }
@@ -437,8 +445,20 @@ void loop() {
         // Display (using red or green led) winner/loser
         debugState = "GameEnd";
 
-        
-        
+        if (Network::player == 1) {
+          Network::sendGameScore(score);
+        }
+
+        p2Score = Network::receiveGameScore();
+        if (p2Score != -1) {
+          if (score > p2Score)
+            digitalWrite(leds[1], HIGH);
+          else
+            digitalWrite(leds[0], HIGH);
+
+          state = State::Null;
+        }
+
       } break;
     }
   }
@@ -450,8 +470,8 @@ void loop() {
 void debug(String debugState) {
   Serial.println("---------------------Debug---------------------");
   Serial.print(String("player = ") + Network::player + String("\nlevel = ") +
-  level + String("\ncur = ") + cur + String("\ni = ") + i + 
-  String("\nscore = ") + score + String("\nstate = ") + debugState + 
+  level + String("\ncur = ") + cur + String("\ni = ") + i +
+  String("\nscore = ") + score + String("\nstate = ") + debugState +
   String("\n"));
   Serial.println("--------------------EndDebug-------------------");
 }

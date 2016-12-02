@@ -12,7 +12,7 @@ namespace Network {
   //////////////////////
   // Host and Port Definitions
   //////////////////////
-  IPAddress hostIP(192, 168, 0, 6); // (original)hostIP(192, 168, 10, 1);
+  IPAddress hostIP(192, 168, 10, 1);
   const uint16_t port = 13100;
 
   // Use WiFiUDP class to create UDP connections
@@ -104,7 +104,7 @@ namespace Network {
         player = 1;
       } else if(data->startsWith("HI")) {
         response = true;
-        player = 0;
+        player = 2;
       }
       delete data;
     }
@@ -190,8 +190,6 @@ int ledPin_2 = 13;
 int ledPin_3 = 12;
 int ledPin_4 = 16;
 int leds[] = {ledPin_1, ledPin_2, ledPin_3, ledPin_4};
-byte selectLed[500];
-byte answerInput[500]; // for checking correct input on player 2(0)
 volatile long lastEncoded = 0;
 volatile long encoderValue = 0;
 long lastencoderValue = 0;
@@ -199,14 +197,21 @@ int lastMSB = 0;
 int lastLSB = 0;
 int MSB, LSB, encoded, sum;
 
+byte selectLed[500];
+byte answerInput[500]; // for checking correct input on other player
 int i = -1;
 int cur = 0;
-byte level = 0;
+byte level = -1;
 int timeKeeper;
 int startTime;
 String debugState;
 int score = 0;
 int p2Score = -1;
+byte toggle;
+int count = -1;
+
+bool printDebug = false;
+bool master = false; // Am I the one making the pattern
 
 // All states that the game can be in
 enum class State { Null, WaitingForButton, WaitingForData, Active, GameEnd };
@@ -217,8 +222,8 @@ void setup() {
   // set input pinmode
   pinMode(encoderPin1, INPUT_PULLUP);
   pinMode(encoderPin2, INPUT_PULLUP);
-  pinMode(buttonPin, INPUT);
   pinMode(encoderButton, INPUT_PULLUP);
+  pinMode(buttonPin, INPUT);
   //turn pull-up resistors on
   digitalWrite(encoderPin1, HIGH);
   digitalWrite(encoderPin2, HIGH);
@@ -237,8 +242,6 @@ void setup() {
 
 void initialize() {
   digitalWrite(ledPin_1, HIGH);
-  i = -1;
-  cur = 0;
   timeKeeper = millis();
   Serial.println(""); // to get off first line
 
@@ -254,35 +257,61 @@ void initialize() {
   }
   // If connected and player 1 goto WaitingForButton state
   if (Network::player == 1) {
-    state = State::WaitingForButton;
-  } else if (Network::player == 0) {
-    state = State::WaitingForData;
+    toggle = 2;
+    master = false;
+  } else if (Network::player == 2) {
+    toggle = 2;
+    master = true;
   }
 }
 
 void loop() {
 
-  if (Network::player == 1) {
+  if (toggle == 0) {
     switch (state) {
       case State::WaitingForButton: {
+        debugState = "WaitingForButton-T1";
+        if (printDebug == false) {
+          //--debug--
+          debug(debugState);
+          //-Enddebug-
+          printDebug = true;
+        }
         // Waiting for start button to be pressed, LED 1 blinking
         blinkLed(leds[0], 200);
         if (digitalRead(buttonPin)) {
           Serial.println("Start button pressed.");
-          debug("WaitingForButton");
+          debug("WaitingForButton-BP");
           startTime = millis();
           state = State::Active;
           digitalWrite(leds[level], HIGH);
           cur = level;
+
+          //-db-
+          printDebug = false;
         }
       } break;
 
       case State::WaitingForData: {
-        // Waiting to hear back from player 0 after pattern sent, All LEDs blinking
+        // Waiting to hear back from toggle in toggle 1 after pattern sent, All LEDs blinking
         blinkAll(200);
+        debugState = "WaitingForData-T1";
+        if (printDebug == false) {
+          //--debug--
+          debug(debugState);
+          delay(5000);
+          //-Enddebug-
+        }
       } break;
 
       case State::Active: {
+        debugState = "Active-T1";
+        if (printDebug == false) {
+          //--debug--
+          debug(debugState);
+          //-Enddebug-
+          printDebug = true;
+        }
         // Start button pressed
         // Creating pattern
         if (lastencoderValue != encoderValue) {
@@ -309,7 +338,7 @@ void loop() {
         if (!digitalRead(encoderButton) && (timeKeeper - startTime < 8000)) {
           // Blink the LED
           i++;
-          debug("Active");
+          debug("Active-BP1");
           selectLed[i] = cur;
           blinkLed(leds[cur], 100);
           digitalWrite(leds[cur], HIGH);
@@ -321,20 +350,36 @@ void loop() {
           Network::sendGameData(selectLed, 500);
           Serial.println("Game data sent.");
 
-          Network::player = 0;
+          toggle = 2;
           i = -1;
-          // progress level by 1 (should cap and end game after level 3)
-          level++;
-          Serial.println("Score checked and recorded player 1 -> player 2 and now should wait to recive patern.");
+          //level++;
+
+          //-db-
+          printDebug = false;
+          Serial.println("Score checked and recorded toggle 0 -> toggle 1 and now should wait to recive patern.");
         }
       } break;
 
       case State::GameEnd: {
+        debugState = "GameEnd-T1";
+        if (printDebug == false) {
+          //--debug--
+          debug(debugState);
+          //-Enddebug-
+          printDebug = true;
+          delay(1000);
+        }
         // Display (using red or green led) winner/loser
         Network::sendGameScore(score);
-
         p2Score = Network::receiveGameScore();
         if (p2Score != -1) {
+          debug("Inside if statement");
+
+          digitalWrite(leds[0], LOW);
+          digitalWrite(leds[1], LOW);
+          digitalWrite(leds[2], LOW);
+          digitalWrite(leds[3], LOW);
+
           if (score > p2Score)
             digitalWrite(leds[1], HIGH);
           else if (score < p2Score)
@@ -346,24 +391,41 @@ void loop() {
         }
       } break;
     }
-  } else if (Network::player == 0) {
+  } else if (toggle == 1) {
     switch (state) {
       case State::WaitingForButton: {
         // Once patern recived, LED 2 blinking | Waiting for start button press
         blinkLed(leds[1], 200);
+        debugState = "WaitingForButton-T2";
+        if (printDebug == false) {
+          //--debug--
+          debug(debugState);
+          //-Enddebug-
+          printDebug = true;
+        }
         if (digitalRead(buttonPin)) {
-          debug("WaitingForButton");
+          debug("WaitingForButton-BP");
           Serial.println("Start button pressed.");
           startTime = millis();
           state = State::Active;
           digitalWrite(leds[level], HIGH);
           cur = level;
+
+          //-db-
+          printDebug = false;
         }
       } break;
 
       case State::WaitingForData: {
-        // Waiting to recive pattern from player 1, All LEDs blinking
+        // Waiting to recive pattern from toggle 1, All LEDs blinking
         blinkAll(200);
+        debugState = "WaitingForData-T2";
+        if (printDebug == false) {
+          //--debug--
+          debug(debugState);
+          //-Enddebug-
+          printDebug = true;
+        }
         bool dataRecived = Network::receiveGameData(selectLed);
         if (dataRecived) {
           // Signal dataRecived
@@ -380,12 +442,22 @@ void loop() {
           }
           delay(1000);
           state = State::WaitingForButton;
+
+          //-db-
+          printDebug = false;
         }
       } break;
 
       case State::Active: {
         // Start button pressed
         // Inputing pattern
+        debugState = "Active-T2";
+        if (printDebug == false) {
+          //--debug--
+          debug(debugState);
+          //-Enddebug-
+          printDebug = true;
+        }
         if (lastencoderValue != encoderValue) {
           if (lastencoderValue < encoderValue && encoderValue % 2 == 0) {
             // change lights
@@ -410,7 +482,7 @@ void loop() {
         if (!digitalRead(encoderButton)) {
           // Blink the LED
           i++;
-          debug("Active");
+          debug("Active-BP2");
           answerInput[i] = cur;
           blinkLed(leds[cur], 100);
           digitalWrite(leds[cur], HIGH);
@@ -435,25 +507,37 @@ void loop() {
             k++;
           }
 
-          Network::player = 1;
-          // Checks to see if you are going on level 3 and enter GameEnd state
-          if (level == 3) {
-            state = State::GameEnd;
-            break;
-          }
+          toggle = 2;
 
           Serial.println("Answer input done.");
           state = State::WaitingForButton;
           i = -1;
-          Serial.println("Score checked and recorded player 2 -> player 1 and now should recored pattern.");
+
+          //-db-
+          printDebug = false;
+
+          /*/ Checks to see if you are going on level 3 and enter GameEnd state
+          if ( level == 1) {
+            state = State::GameEnd;
+            break;
+          }
+          // progress level by 1 (should cap and end game after level 3)
+          level++;*/
+          Serial.println("Score checked and recorded toggle 1 -> toggle 0 and now should recored pattern.");
         }
       } break;
 
       case State::GameEnd: {
         // Display (using red or green led) winner/loser
-        debugState = "GameEnd";
-
-        // Player 2(0) should already have this from above
+        debugState = "GameEnd-T2";
+        if (printDebug == false) {
+          //--debug--
+          debug(debugState);
+          //-Enddebug-
+          printDebug = true;
+          delay(5000);
+        }
+        // Player 1 should already have this from above
         if (p2Score != -1) {
           if (score > p2Score)
             digitalWrite(leds[1], HIGH);
@@ -465,6 +549,29 @@ void loop() {
 
       } break;
     }
+  } else if (toggle == 2) {
+    Network::sendData("inSYNC");
+    String* recived = Network::readData();
+    if (recived != NULL && recived->startsWith("inS")) {
+      debug(String("I player ") + Network::player + String(" am all syced up!"));
+
+      count++;
+      if (count % 2 == 0)
+        level++;
+
+      if (level == 2) {
+        toggle = 0;
+        state = State::GameEnd;
+      } else if (master) {
+        master = false;
+        toggle = 1;
+        state = State::WaitingForData;
+      } else if (!master) {
+        master = true;
+        toggle = 0;
+        state = State::WaitingForButton;
+      }
+    }
   }
 
   timeKeeper = millis();
@@ -473,10 +580,11 @@ void loop() {
 
 void debug(String debugState) {
   Serial.println("---------------------Debug---------------------");
-  Serial.print(String("player = ") + Network::player + String("\nlevel = ") +
+  Serial.print(String("toggle = ") + toggle + String("\nlevel = ") +
   level + String("\ncur = ") + cur + String("\ni = ") + i +
   String("\nscore = ") + score + String("\nstate = ") + debugState +
-  String("\n"));
+  String("\np2Score = ") + p2Score + String("\n") + String("\ncount = ")
+  + count + String("\n"));
   Serial.println("--------------------EndDebug-------------------");
 }
 

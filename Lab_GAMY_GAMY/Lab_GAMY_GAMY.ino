@@ -514,8 +514,6 @@ void loop() {
           Serial.println("Answer input done.");
           state = State::WaitingForButton;
           i = -1;
-          // progress level by 1 (should cap and end game after level 3)
-          level++;
           Serial.println("Score checked and recorded player 2 -> player 1 and now should recored pattern.");
         }
       } break;

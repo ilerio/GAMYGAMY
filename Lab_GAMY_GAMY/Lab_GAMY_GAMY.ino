@@ -12,7 +12,7 @@ namespace Network {
   //////////////////////
   // Host and Port Definitions
   //////////////////////
-  IPAddress hostIP(192, 168, 10, 1);
+  IPAddress hostIP(192, 168, 10, 1); // (original)hostIP(192, 168, 10, 1);
   const uint16_t port = 13100;
 
   // Use WiFiUDP class to create UDP connections
@@ -352,11 +352,7 @@ void loop() {
 
           toggle = 2;
           i = -1;
-          //level++;
-
-          //-db-
-          printDebug = false;
-          Serial.println("Score checked and recorded toggle 0 -> toggle 1 and now should wait to recive patern.");
+          Serial.println("Score checked and recorded player 1 -> player 2 and now should wait to recive patern.");
         }
       } break;
 
@@ -425,6 +421,11 @@ void loop() {
           debug(debugState);
           //-Enddebug-
           printDebug = true;
+        }
+        // Checks to see if you are going on level 3 and enter GameEnd state
+        if (level == 1) {
+          state = State::GameEnd;
+          break;
         }
         bool dataRecived = Network::receiveGameData(selectLed);
         if (dataRecived) {
@@ -508,22 +509,14 @@ void loop() {
           }
 
           toggle = 2;
+          Network::player = 1;
 
           Serial.println("Answer input done.");
           state = State::WaitingForButton;
           i = -1;
-
-          //-db-
-          printDebug = false;
-
-          /*/ Checks to see if you are going on level 3 and enter GameEnd state
-          if ( level == 1) {
-            state = State::GameEnd;
-            break;
-          }
           // progress level by 1 (should cap and end game after level 3)
-          level++;*/
-          Serial.println("Score checked and recorded toggle 1 -> toggle 0 and now should recored pattern.");
+          level++;
+          Serial.println("Score checked and recorded player 2 -> player 1 and now should recored pattern.");
         }
       } break;
 
